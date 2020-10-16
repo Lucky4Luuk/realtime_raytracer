@@ -1,0 +1,24 @@
+[package]
+name = "realtime_raytracer"
+version = "0.1.0"
+authors = ["Luuk van Oijen <lazyluuk.channel@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+#Logging
+log = "0.4"
+pretty_env_logger = "0.3.1"
+
+#Graphics
+sdl2 = { version = "0.33", features = ["bundled"] }
+gl = "0.14"
+
+#UI
+imgui = "0.4.0"
+imgui-opengl-renderer = "0.8.0"
+imgui-sdl2 = "0.10.0"
+
+#Math
+glam = "0.9.2"
