@@ -1,12 +1,22 @@
 //NOTE: This file is meant for functions for which I have not found a home yet.
 //      Most things here will move at some point!
 
+//TODO: Dont load test data lol
+// extern crate image;
+use image::GenericImage;
+
 pub fn create_texture(resolution: (i32, i32)) -> u32 {
     let mut texture = 0;
 
     unsafe {
         gl::GenTextures(1, &mut texture);
         gl::BindTexture(gl::TEXTURE_2D, texture);
+
+        //tmp
+        // let img = image::open(&std::path::Path::new("src/textures/cool.png")).expect("Failed to load texture");
+        // let data = img.raw_pixels();
+
+        // gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGB as i32, img.width() as i32, img.height() as i32, 0, gl::RGB, gl::UNSIGNED_BYTE, &data[0] as *const u8 as *const std::os::raw::c_void);
         gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGBA32F as i32, resolution.0, resolution.1, 0, gl::RGBA, gl::FLOAT, std::ptr::null()); //null ptr so texture is empty
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32); //possibly make the filtering linear?
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);

@@ -32,6 +32,7 @@ pub fn get_workgroup_invocations() -> i32 {
     value
 }
 
+//TODO: Useless now lol
 pub fn get_compute_program(cs: &str) -> GLuint {
     unsafe {
         let shader = gl::CreateShader(gl::COMPUTE_SHADER);

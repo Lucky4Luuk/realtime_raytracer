@@ -47,6 +47,9 @@ fn main() {
     let quad_va = gl_util::create_render_quad();
     let render_tex = gl_util::create_texture((1280, 720));
 
+    let compute_shader = shader::Shader::from_compute(include_str!("shaders/compute.glsl"));
+    let compute_program = shader::Program::from_shaders(vec![compute_shader]);
+
     'main: loop {
         for event in event_pump.poll_iter() {
             imgui_sdl2.handle_event(&mut imgui, &event);
@@ -60,6 +63,17 @@ fn main() {
             }
         }
 
+        //output to texture
+        unsafe {
+            gl::UseProgram(compute_program.handle);
+            // gl::BindTexture(gl::TEXTURE_2D, render_tex);
+            gl::BindImageTexture(0, render_tex, 0, gl::FALSE, 0, gl::WRITE_ONLY, gl::RGBA32F);
+            gl::DispatchCompute(1280, 720, 1);
+            // gl::UseProgram(0);
+
+            gl::MemoryBarrier(gl::SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        }
+
         unsafe {
             gl::ClearColor(127.0 / 255.0, 103.0 / 255.0, 181.0 / 255.0, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
@@ -71,7 +85,9 @@ fn main() {
         unsafe {
             gl::UseProgram(quad_program.handle);
             gl::BindVertexArray(quad_va);
+            gl::BindTexture(gl::TEXTURE_2D, render_tex);
             gl::DrawElements(gl::TRIANGLES, 6, gl::UNSIGNED_INT, std::ptr::null());
+            gl::BindTexture(gl::TEXTURE_2D, 0);
             gl::BindVertexArray(0);
             gl::UseProgram(0);
         }

@@ -14,6 +14,7 @@ pretty_env_logger = "0.3.1"
 #Graphics
 sdl2 = { version = "0.33", features = ["bundled"] }
 gl = "0.14"
+image = "0.19.0"
 
 #UI
 imgui = "0.4.0"
