@@ -102,7 +102,10 @@ fn main() {
 
         debug_window.build(&ui, || {
             ui.text(format!("fps: {:.2}", 1.0 / delta_s));
-            // ui.separator();
+            ui.separator();
+            ui.text(format!("workgroup_size:  {:?}", compute::get_workgroup_count()));
+            ui.text(format!("workgroup_invoc: {:?}", compute::get_workgroup_invocations()));
+            ui.text(format!("workgroup_size:  {:?}", compute::get_workgroup_size()));
             // ui.text(format!("cam pos: {:?}", camera.position));
         });
 
