@@ -1,6 +1,6 @@
 #version 450
 
-layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 layout(rgba32f, binding = 0) uniform image2D img_output;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -12,8 +12,8 @@ vec3 sunCol =  6.0*vec3(1.0,0.8,0.6); //TODO: Uniform, separate intensity
 vec3 skyCol =  4.0*vec3(0.2,0.35,0.5); //TODO: Uniform, separate intensity
 
 // uniform int iSample;
-// uniform float iSeed;
-// int iSample = 1;
+uniform float iSeed;
+int iSample = 1;
 // float iSeed = 0.47;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,20 +91,31 @@ vec3 calcColour(float mat)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Hashing and sampling
+// Hash
 ////////////////////////////////////////////////////////////////////////////////
-float hash(in float p)
+float shit_hash(inout float seed)
 {
-    return fract(sin(p)*43758.5453123);
+    return fract(sin(seed+=0.1)*43758.5453123 );
 }
 
-vec2 hash2(in float seed) {
+float hash(inout float seed)
+{
+    return fract(sin(seed)*43758.5453123 );
+}
+
+// vec2 hash2(inout float seed) {
+//     return fract(sin(vec2(seed+=0.1,seed+=0.1))*vec2(43758.5453123,22578.1459123));
+// }
+
+vec2 hash2(inout float seed) {
     return fract(sin(vec2(seed,seed))*vec2(43758.5453123,22578.1459123));
 }
 
-vec3 cosineDirection(in float seed, in vec3 nor)
+vec3 cosineDirection( inout float seed, in vec3 nor)
 {
+    // seed += 78.233 * iSeed;
     float u = hash( seed );
+    // seed += 10.873 * iSeed;
     float v = hash( seed );
 
 	// method by fizzer: http://www.amietia.com/lambertnotangent.html
@@ -113,7 +124,7 @@ vec3 cosineDirection(in float seed, in vec3 nor)
     return normalize( nor + vec3(sqrt(1.0-u*u) * vec2(cos(a), sin(a)), u) );
 }
 
-vec3 cosWeightedRandomHemisphereDirection(in float seed, in vec3 n ) {
+vec3 cosWeightedRandomHemisphereDirection( inout float seed, in vec3 n ) {
   	vec2 rv2 = hash2(seed);
 
 	vec3  uu = normalize( cross( n, vec3(0.0,1.0,1.0) ) );
@@ -129,7 +140,7 @@ vec3 cosWeightedRandomHemisphereDirection(in float seed, in vec3 n ) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Raytracing
+// Lighting
 ////////////////////////////////////////////////////////////////////////////////
 vec3 calcNormal( in vec3 pos )
 {
@@ -142,7 +153,8 @@ vec3 calcNormal( in vec3 pos )
 }
 
 //TODO: Define constants for tmax (and possibly precision)
-vec2 intersect( in vec3 ro, in vec3 rd ) {
+vec2 intersect( in vec3 ro, in vec3 rd )
+{
     vec2 res = vec2(-1.0);
     float tmax = 16.0;
     float t = 0.01;
@@ -162,7 +174,8 @@ vec2 intersect( in vec3 ro, in vec3 rd ) {
 }
 
 //TODO: Colour
-float shadow( in vec3 ro, in vec3 rd ) {
+float shadow( in vec3 ro, in vec3 rd )
+{
     float res = 0.0;
 
     float tmax = 12.0;
@@ -180,48 +193,62 @@ float shadow( in vec3 ro, in vec3 rd ) {
     return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Lighting
-////////////////////////////////////////////////////////////////////////////////
-vec3 calculateLight(vec3 ro, vec3 rd, float sa) {
+vec3 calculateLight(vec3 ro, vec3 rd, inout float sa)
+{
+    // vec3 albedo = vec3(0.95, 0.77, 0.83);
+    // vec3 albedo = vec3(242.0 / 255.0, 233.0 / 255.0, 206.0 / 255.0);
+
     vec3 accumColour = vec3(0.0);
     vec3 colorMask = vec3(1.0);
+    // float firstDist = 0.0;
 
-    //Single bounce
-    //Trace ray
-    vec2 tres = intersect(ro, rd);
-    float t = tres.x;
-    vec3 albedo = calcColour(tres.y);
-    if (t < 0.0) {
-        return mix( 0.05*vec3(0.9,1.0,1.0), skyCol, smoothstep(0.1,0.25,rd.y) ); //Sky colour
+    for (int bounce; bounce<BOUNCES; bounce++) {
+        //Trace ray
+        vec2 tres = intersect(ro, rd);
+        float t = tres.x;
+        vec3 albedo = calcColour(tres.y);
+        if (t < 0.0) {
+            if (bounce == 0) return mix( 0.05*vec3(0.9,1.0,1.0), skyCol, smoothstep(0.1,0.25,rd.y) ); //Sky colour
+            break;
+        }
+
+        vec3 pos = ro + rd * t;
+        vec3 nor = calcNormal(pos);
+
+        // if (bounce == 0)
+        //     firstDist = t;
+
+        colorMask *= albedo;
+
+        vec3 iColor = vec3(0.0);
+
+        float sunDif =  max(0.0, dot(sunDir, nor));
+        float sunSha = 1.0; if (sunDif > EPSILON * 0.1) sunSha = shadow(pos + nor * EPSILON, sunDir);
+        iColor += sunCol * sunDif * sunSha;
+        //TODO: Specular
+
+        // vec3 skyPoint = cosineDirection( sa + 7.1*float(iSample) + 5681.123 + float(bounce)*92.13, nor);
+        sa += 7.1*float(iSample) + 5681.123 + float(bounce)*92.13;
+        vec3 skyPoint = cosWeightedRandomHemisphereDirection( sa, nor);
+        float skySha = shadow( pos + nor*EPSILON, skyPoint);
+        iColor += skyCol * skySha;
+
+        accumColour += colorMask * iColor;
+
+        sa = 76.2 + 73.1*float(bounce) + sa + 17.7*float(iSample);
+
+        rd = cosineDirection(sa, nor); //This one is as good as the other one, and maybe faster
+        // float xi1 = hash(sa);
+        // hash(sa);
+        // hash(sa);
+        // float xi2 = hash(sa);
+        // rd = sampleHemisphereCosWeighted(nor, xi1, xi2);
+        ro = pos;
     }
-
-    vec3 pos = ro + rd * t;
-    vec3 nor = calcNormal(pos);
-
-    colorMask *= albedo;
-
-    vec3 iColor = vec3(0.0);
-
-    float sunDif =  max(0.0, dot(sunDir, nor));
-    float sunSha = 1.0; if (sunDif > EPSILON * 0.1) sunSha = shadow(pos + nor * EPSILON, sunDir);
-    iColor += sunCol * sunDif * sunSha;
-    //TODO: Specular
-
-    // vec3 skyPoint = cosineDirection( sa + 7.1*float(iSample) + 5681.123 + float(bounce)*92.13, nor);
-    // sa += 7.1*float(iSample) + 5681.123 + float(bounce)*92.13;
-    vec3 skyPoint = cosWeightedRandomHemisphereDirection( sa, nor);
-    float skySha = shadow( pos + nor*EPSILON, skyPoint);
-    iColor += skyCol * skySha;
-
-    accumColour += colorMask * iColor;
 
     return accumColour;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Camera and final result
-////////////////////////////////////////////////////////////////////////////////
 mat3 setCamera( in vec3 ro, in vec3 rt, in float cr )
 {
 	vec3 cw = normalize(rt-ro);
@@ -231,8 +258,12 @@ mat3 setCamera( in vec3 ro, in vec3 rt, in float cr )
     return mat3( cu, cv, -cw );
 }
 
-vec3 trace(vec2 uv, vec2 dims, vec2 screen_coords, float seed) {
+vec3 trace(vec2 uv, float seed_in, vec2 dims, vec2 screen_coords) {
+    float seed = seed_in;
+    float sa = hash( seed );
+
     vec2 p = (-dims.xy + 2.0*screen_coords) / dims.y;
+    p.y = -p.y; //Flip the y as love2d for some reason makes the result upside down compared to shadertoy
 
     //Temporary camera
     vec3 ro = vec3(0.0);
@@ -240,7 +271,7 @@ vec3 trace(vec2 uv, vec2 dims, vec2 screen_coords, float seed) {
     mat3 ca = setCamera(ro, ta, 0.0);
     vec3 rd = normalize(ca * vec3(p, -1.3));
 
-    vec3 col = calculateLight(ro, rd, seed);
+    vec3 col = calculateLight(ro, rd, sa);
 
     return col;
 }
@@ -251,9 +282,10 @@ void main() {
     vec2 uv = pixel_coords.xy / dims;
 
     // float seed = fract(sin(dot(pixel_coords.xy*2.123, vec2(12.949850, 78.23834))));// + 1113.12370912874;
+
     float seed = 0.0;
 
     // imageStore(img_output, pixel_coords.xy, vec4(uv, 0.0, 1.0));
-    vec3 result = trace(uv, dims, pixel_coords.xy, seed);
+    vec3 result = trace(uv, seed, dims, pixel_coords.xy);
     imageStore(img_output, ivec2(gl_GlobalInvocationID.xy), vec4(result, 1.0));
 }

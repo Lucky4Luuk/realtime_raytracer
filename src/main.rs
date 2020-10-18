@@ -68,14 +68,14 @@ fn main() {
             gl::UseProgram(compute_program.handle);
             // gl::BindTexture(gl::TEXTURE_2D, render_tex);
             gl::BindImageTexture(0, render_tex, 0, gl::FALSE, 0, gl::WRITE_ONLY, gl::RGBA32F);
-            gl::DispatchCompute(1280, 720, 1);
-            gl::UseProgram(0);
+            gl::DispatchCompute(1280/16, 720/16, 1);
+            // gl::UseProgram(0);
 
             gl::MemoryBarrier(gl::SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
-            if gl::GetError() > 0 {
-                panic!("OpenGL error");
-            }
+            // if gl::GetError() > 0 {
+            //     panic!("OpenGL error");
+            // }
         }
 
         unsafe {
@@ -95,9 +95,9 @@ fn main() {
             gl::BindVertexArray(0);
             gl::UseProgram(0);
 
-            if gl::GetError() > 0 {
-                panic!("OpenGL error");
-            }
+            // if gl::GetError() > 0 {
+            //     panic!("OpenGL error");
+            // }
         }
 
         let ui = imgui.frame();
