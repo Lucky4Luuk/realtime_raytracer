@@ -66,16 +66,12 @@ fn main() {
         //output to texture
         unsafe {
             gl::UseProgram(compute_program.handle);
-            // gl::BindTexture(gl::TEXTURE_2D, render_tex);
             gl::BindImageTexture(0, render_tex, 0, gl::FALSE, 0, gl::WRITE_ONLY, gl::RGBA32F);
+
+            //Division by 16 because the workgroup is 16x16x1 in size
             gl::DispatchCompute(1280/16, 720/16, 1);
-            // gl::UseProgram(0);
 
             gl::MemoryBarrier(gl::SHADER_IMAGE_ACCESS_BARRIER_BIT);
-
-            // if gl::GetError() > 0 {
-            //     panic!("OpenGL error");
-            // }
         }
 
         unsafe {
@@ -94,10 +90,6 @@ fn main() {
             gl::BindTexture(gl::TEXTURE_2D, 0);
             gl::BindVertexArray(0);
             gl::UseProgram(0);
-
-            // if gl::GetError() > 0 {
-            //     panic!("OpenGL error");
-            // }
         }
 
         let ui = imgui.frame();
@@ -114,7 +106,6 @@ fn main() {
             ui.text(format!("workgroup_size:  {:?}", compute::get_workgroup_count()));
             ui.text(format!("workgroup_invoc: {:?}", compute::get_workgroup_invocations()));
             ui.text(format!("workgroup_size:  {:?}", compute::get_workgroup_size()));
-            // ui.text(format!("cam pos: {:?}", camera.position));
         });
 
         imgui_sdl2.prepare_render(&ui, &window.window);
@@ -125,8 +116,6 @@ fn main() {
         delta_s = delta.as_secs() as f32 + delta.subsec_nanos() as f32 / 1_000_000_000.0;
         last_frame = now;
         imgui.io_mut().delta_time = delta_s;
-
-        // window.set_title(&format!("FPS: {}", 1.0 / delta_s));
 
         window.swap_buffer();
     }
