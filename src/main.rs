@@ -63,15 +63,13 @@ fn main() {
             }
         }
 
-        //output to texture
+        //Cast rays
         unsafe {
             gl::UseProgram(compute_program.handle);
             gl::BindImageTexture(0, render_tex, 0, gl::FALSE, 0, gl::WRITE_ONLY, gl::RGBA32F);
 
             //Division by 16 because the workgroup is 16x16x1 in size
             gl::DispatchCompute(1280/16, 720/16, 1);
-
-            gl::MemoryBarrier(gl::SHADER_IMAGE_ACCESS_BARRIER_BIT);
         }
 
         unsafe {
@@ -83,6 +81,8 @@ fn main() {
 
         //Render textured quad
         unsafe {
+            gl::MemoryBarrier(gl::SHADER_IMAGE_ACCESS_BARRIER_BIT); //Wait for the texture writes to finish
+
             gl::UseProgram(quad_program.handle);
             gl::BindVertexArray(quad_va);
             gl::BindTexture(gl::TEXTURE_2D, render_tex);
